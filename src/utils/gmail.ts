@@ -1,10 +1,9 @@
-import { google } from 'googleapis';
+import { gmail_v1, google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { gmail_v1 } from 'googleapis';
 
 function authenticateGmail(auth: OAuth2Client): gmail_v1.Gmail {
-    return google.gmail({ version: 'v1', auth });
-  }
+  return google.gmail({ version: 'v1', auth });
+}
 
 // ===== Create a Gmail search query =====
 type DateString = string; // YYYY/MM/DD format
@@ -190,10 +189,113 @@ function buildGmailSearch(params: GmailSearchParams): string {
 
     return terms.join(' ');
 }
+
+// ===== Parse a Gmail message =====
+// bodyType: 'plain' | 'html'
+interface GmailMessagePart {
+  mimeType?: string | null;
+  headers?: Array<{
+    name: string;
+    value: string;
+  }>;
+  body?: {
+    size: number;
+    data?: string;
+  };
+  parts?: GmailMessagePart[];
+}
+
+type Schema$MessagePart = gmail_v1.Schema$MessagePart;
+type Schema$Message = gmail_v1.Schema$Message;
+
+interface ParsedGmailMessage {
+  id: string;
+  threadId: string;
+  fromName: string;
+  fromEmail: string;
+  subject: string;
+  bodyDecoded: string;
+}
+
+function parseGmailMessage(message: Schema$Message, bodyType: 'plain' | 'html'): ParsedGmailMessage {
+  // Initialize empty result
+  const result: ParsedGmailMessage = {
+    id: message.id || '',
+    threadId: message.threadId || '',
+    fromName: '',
+    fromEmail: '',
+    subject: '',
+    bodyDecoded: ''
+  };
+
+  // Get headers from the payload
+  const headers = message.payload?.headers || [];
+
+  // Parse from and subject from headers
+  for (const header of headers) {
+    if (header.name === 'From' && header.value) {
+      const fromMatch = header.value.match(/^([^<]+)?<([^>]+)>$/);
+      if (fromMatch) {
+        result.fromName = (fromMatch[1] || '').trim();
+        result.fromEmail = fromMatch[2].trim();
+      }
+    } else if (header.name === 'Subject' && header.value) {
+      result.subject = header.value;
+    }
+  }
+
+  // Function to find the correct body part
+  // Function to find the correct body part
+function findBodyPart(part: Schema$MessagePart): string | undefined {
+  // First check direct parts array
+  if (part.parts) {
+    for (const subPart of part.parts) {
+      if (subPart.mimeType === `text/${bodyType}` && subPart.body?.data) {
+        return subPart.body.data;
+      }
+    }
+    
+    // If not found in direct parts, recursively check nested parts
+    for (const subPart of part.parts) {
+      const found = findBodyPart(subPart);
+      if (found) return found;
+    }
+  }
+  
+  // Finally check the part itself
+  if (part.mimeType === `text/${bodyType}` && part.body?.data) {
+    return part.body.data;
+  }
+
+  return undefined;
+}
+
+// Find and decode the body
+if (message.payload) {
+  const bodyData = findBodyPart(message.payload);
+  if (bodyData) {
+    try {
+      // Replace URL-safe characters and padding
+      const normalized = bodyData
+        .replace(/-/g, '+')
+        .replace(/_/g, '/')
+        .replace(/\s/g, '');
+      result.bodyDecoded = Buffer.from(normalized, 'base64').toString('utf8');
+    } catch (error) {
+      console.error('Error decoding message body:', error);
+      result.bodyDecoded = '';
+    }
+  }
+}
+
+  return result;
+}
   
 export {
     authenticateGmail,
     buildGmailSearch,
     validateSearchParams,
-    GmailSearchParams
+    GmailSearchParams,
+    ParsedGmailMessage,
+    parseGmailMessage
 };

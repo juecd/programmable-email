@@ -1,6 +1,6 @@
-import { authorize } from './src/gmail_auth';
-import { getMessage } from './src/gmail_api';
-import { buildGmailSearch, parseGmailMessage } from './src/utils/gmail';
+import { authorize } from './gmail_auth';
+import { getMessage } from './gmail_api';
+import { buildGmailSearch, parseGmailMessage } from './utils/gmail';
 import express, { Express, Request, Response } from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -33,10 +33,32 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('message', async (data: Buffer) => {
     console.log('Received:', data.toString());
     const auth = await authorize();
-    const response = await getMessage(auth, '193f9e07c0e65180')
-    .catch((error) => {
-      console.error(error);
-    });
+    // const response = await getMessage(auth, '193f9e07c0e65180')
+    // .catch((error) => {
+    //   console.error(error);
+    // });
+    console.log("boop")
+    const mockMessage = {
+      id: '12345',
+      threadId: '67890',
+      payload: {
+        headers: [
+          { name: 'From', value: 'John Doe <john@example.com>' },
+          { name: 'Subject', value: 'Test Subject' }
+        ],
+        parts: [
+          {
+            mimeType: 'text/plain',
+            body: {
+              size: 100,
+              data: 'invalid-base64-data'
+            }
+          }
+        ]
+      }
+    };
+    console.log(mockMessage);
+    const response = parseGmailMessage(mockMessage, 'plain');
     if (response) {
       ws.send(JSON.stringify(response));
     } else {

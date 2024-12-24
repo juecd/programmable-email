@@ -1,25 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import { gmail_v1 } from 'googleapis';
-import { authenticateGmail, createSearchQuery } from './utils/gmail';
+import { authenticateGmail, parseGmailMessage, ParsedGmailMessage } from './utils/gmail';
 
-async function listLabels(auth: OAuth2Client): Promise<Array<string>> {
-    const gmail = authenticateGmail(auth);
-    const res = await gmail.users.labels.list({
-      userId: 'me',
-    });
-    
-    const labels = res.data.labels;
-    if (!labels || labels.length === 0) {
-      console.log('No labels found.');
-      return [];
-    }
-    
-    const labelsArray: Array<string> = [];
-    labels.forEach((label: gmail_v1.Schema$Label) => {
-        labelsArray.push(label.name);
-    });
-    return labelsArray;
-  }
 
   async function getEmailAddress(auth: OAuth2Client): Promise<string> {
     const gmail = authenticateGmail(auth);
@@ -111,7 +93,7 @@ async function listLabels(auth: OAuth2Client): Promise<Array<string>> {
     return res.data;
   }
 
-  async function getMessages(auth: OAuth2Client, { search, labelIds, pageToken, maxResults }: { search?: string, labelIds?: Array<string>, pageToken?: string, maxResults?: number }): Promise<gmail_v1.Schema$Message> {
+  async function getMessages(auth: OAuth2Client, { search, labelIds, pageToken, maxResults }: { search?: string, labelIds?: Array<string>, pageToken?: string, maxResults?: number }): Promise<gmail_v1.Schema$ListMessagesResponse> {
     const gmail = authenticateGmail(auth);
     const res = await gmail.users.messages.list({
       // Hardcoded
@@ -136,11 +118,61 @@ async function listLabels(auth: OAuth2Client): Promise<Array<string>> {
      */
     return res.data;
   }
+
+  async function getMessage(auth: OAuth2Client, messageId: string): Promise<ParsedGmailMessage> {
+    const gmail = authenticateGmail(auth);
+    const res = await gmail.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'full',
+    });
+    /**
+     * Returns:
+     *   {
+            "id": string,
+            "threadId": string,
+            "labelIds": [
+                string
+            ],
+            "snippet": string,
+            "historyId": string,
+            "internalDate": string,
+            "payload": {
+                {
+                    "partId": string,
+                    "mimeType": string,
+                    "filename": string,
+                    "headers": [
+                        {
+                            "name": string,
+                            "value": string
+                        }
+                    ],
+                    "body": {
+                        {
+                            "attachmentId": string,
+                            "size": integer,
+                            "data": string
+                        }
+                    },
+                    "parts": [
+                        {
+                        object (MessagePart)
+                        }
+                    ]
+                }
+            },
+            "sizeEstimate": integer,
+            "raw": string
+     *   }
+     */
+    return parseGmailMessage(res.data, 'plain');
+  }
   
   export {
-    listLabels,
     getEmailAddress,
     sendMessage,
     getMessages,
+    getMessage,
     addLabelToMessage
   };

@@ -3,8 +3,9 @@ import path from 'path';
 import process from 'process';
 import { authenticate } from '@google-cloud/local-auth';
 import { google } from 'googleapis';
-import { OAuth2Client, Credentials } from 'google-auth-library';
+import { OAuth2Client, Credentials, GoogleAuth } from 'google-auth-library';
 import { gmail_v1 } from 'googleapis';
+
 
 // If modifying these scopes, delete token.json.
 const SCOPES: string[] = ['https://www.googleapis.com/auth/gmail.modify'];
@@ -28,19 +29,30 @@ interface SavedCredentials {
   type: string;
   client_id: string;
   client_secret: string;
-  refresh_token: string;
+  refresh_token?: string;
+  access_token?: string;
 }
 
-/**
- * Reads previously authorized credentials from the save file.
- *
- * @returns Promise resolving to OAuth2Client or null if credentials don't exist
- */
 async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
   try {
     const content = await fs.readFile(TOKEN_PATH, 'utf-8');
-    const credentials: Credentials = JSON.parse(content);
-    return google.auth.fromJSON(credentials) as OAuth2Client;
+    const credentials: SavedCredentials = JSON.parse(content);
+    
+    // Create OAuth2Client directly from credentials
+    const oauth2Client = new OAuth2Client({
+      clientId: credentials.client_id,
+      clientSecret: credentials.client_secret
+    });
+
+    // Set the credentials
+    if (credentials.refresh_token) {
+      oauth2Client.setCredentials({
+        refresh_token: credentials.refresh_token,
+        access_token: credentials.access_token
+      });
+    }
+    
+    return oauth2Client;
   } catch (err) {
     return null;
   }
@@ -75,30 +87,35 @@ async function saveCredentials(client: OAuth2Client): Promise<void> {
  *
  * @returns Promise resolving to authenticated OAuth2 client
  */
+interface AuthenticateResult extends Pick<OAuth2Client, 'credentials'> {
+  // Add any other properties you know exist on the authenticate result
+}
+
 async function authorize(): Promise<OAuth2Client> {
   let client = await loadSavedCredentialsIfExist();
   if (client) {
     return client;
   }
   
-  client = await authenticate({
+  const authResult = await authenticate({
     scopes: SCOPES,
     keyfilePath: CREDENTIALS_PATH,
-  });
+  }) as AuthenticateResult;
 
-  if (!client) {
+  if (!authResult) {
     throw new Error('Authentication failed');
   }
 
-  if (client.credentials) {
-    await saveCredentials(client);
+  // Create a new OAuth2Client with the credentials
+  const oauth2Client = new OAuth2Client();
+  if (authResult.credentials) {
+    oauth2Client.setCredentials(authResult.credentials);
+    await saveCredentials(oauth2Client);
   }
   
-  return client;
+  return oauth2Client;
 }
 
-
-// Export functions if you want to use them as a module
 export {
   authorize,
   loadSavedCredentialsIfExist,
