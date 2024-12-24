@@ -7,7 +7,7 @@ import { OAuth2Client, Credentials } from 'google-auth-library';
 import { gmail_v1 } from 'googleapis';
 
 // If modifying these scopes, delete token.json.
-const SCOPES: string[] = ['https://www.googleapis.com/auth/gmail.readonly'];
+const SCOPES: string[] = ['https://www.googleapis.com/auth/gmail.modify'];
 // The file token.json stores the user's access and refresh tokens, and is
 // created automatically when the authorization flow completes for the first time.
 const TOKEN_PATH: string = path.join(process.cwd(), 'token.json');

@@ -1,5 +1,6 @@
 import { authorize } from './gmail_auth';
-import { listLabels } from './gmail_api';
+import { getMessages } from './gmail_api';
+import { buildGmailSearch } from './utils/gmail';
 import express, { Express, Request, Response } from 'express';
 import { createServer } from 'http';
 import { WebSocket, WebSocketServer } from 'ws';
@@ -30,8 +31,16 @@ wss.on('connection', (ws: WebSocket) => {
   // Handle incoming messages
   ws.on('message', async (data: Buffer) => {
     console.log('Received:', data.toString());
-    const response = await authorize().then(listLabels);
-    ws.send(JSON.stringify(response));
+    const auth = await authorize();
+    const response = await getMessages(auth, { maxResults: 10, search: buildGmailSearch({ properties: { status: ['unread'] } }) })
+    .catch((error) => {
+      console.error(error);
+    });
+    if (response) {
+      ws.send(JSON.stringify(response));
+    } else {
+      ws.send('Failed to send message');
+    }
   });
 
   // Handle client disconnection
