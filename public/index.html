@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Programmable Email</title>
+</head>
+<body>
+    <h1>Programmable Email</h1>
+    <div style="padding-bottom: 25px;">
+        <p>Enter a task for your email inbox:</p>
+        <textarea id="messageInput" cols="40" rows="5" placeholder="Type a message..."></textarea>
+        <br/>
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    <div id="messages"></div>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:3000');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+
+        ws.onopen = () => {
+            appendMessage('Connected to WebSocket server');
+        };
+
+        ws.onmessage = async (event) => {
+            appendMessage(event.data);
+        };
+        ws.onclose = () => {
+            appendMessage('Disconnected from server');
+        };
+
+        ws.onerror = (error) => {
+            appendMessage('WebSocket error: ' + error);
+        };
+
+        function sendMessage() {
+            const message = messageInput.value;
+            if (message) {
+                ws.send(message);
+                appendMessage(`Sent: ${message}`);
+                messageInput.value = '';
+            }
+        }
+
+        function appendMessage(message) {
+            console.log("here");
+            console.log(message);
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Allow sending message with Enter key
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

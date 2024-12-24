@@ -1,128 +1,51 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import process from 'process';
-import { authenticate } from '@google-cloud/local-auth';
-import { google } from 'googleapis';
-import { OAuth2Client, Credentials } from 'google-auth-library';
-import { gmail_v1 } from 'googleapis';
+import { authorize } from './gmail_auth';
+import { listLabels } from './gmail_api';
+import express, { Express, Request, Response } from 'express';
+import { createServer } from 'http';
+import { WebSocket, WebSocketServer } from 'ws';
 
-// If modifying these scopes, delete token.json.
-const SCOPES: string[] = ['https://www.googleapis.com/auth/gmail.readonly'];
-// The file token.json stores the user's access and refresh tokens, and is
-// created automatically when the authorization flow completes for the first time.
-const TOKEN_PATH: string = path.join(process.cwd(), 'token.json');
-const CREDENTIALS_PATH: string = path.join(process.cwd(), 'credentials.json');
+const app: Express = express();
+const port: number = 3000;
 
-interface CredentialsConfig {
-  installed?: {
-    client_id: string;
-    client_secret: string;
-  };
-  web?: {
-    client_id: string;
-    client_secret: string;
-  };
-}
+// Create HTTP server instance
+const server = createServer(app);
 
-interface SavedCredentials {
-  type: string;
-  client_id: string;
-  client_secret: string;
-  refresh_token: string;
-}
+// Create WebSocket server instance
+const wss = new WebSocketServer({ server });
 
-/**
- * Reads previously authorized credentials from the save file.
- *
- * @returns Promise resolving to OAuth2Client or null if credentials don't exist
- */
-async function loadSavedCredentialsIfExist(): Promise<OAuth2Client | null> {
-  try {
-    const content = await fs.readFile(TOKEN_PATH, 'utf-8');
-    const credentials: Credentials = JSON.parse(content);
-    return google.auth.fromJSON(credentials) as OAuth2Client;
-  } catch (err) {
-    return null;
-  }
-}
+app.use(express.static('public'));
 
-/**
- * Serializes credentials to a file compatible with GoogleAuth.fromJSON.
- *
- * @param client - The authenticated OAuth2 client
- */
-async function saveCredentials(client: OAuth2Client): Promise<void> {
-  const content = await fs.readFile(CREDENTIALS_PATH, 'utf-8');
-  const keys: CredentialsConfig = JSON.parse(content);
-  const key = keys.installed || keys.web;
-  
-  if (!key) {
-    throw new Error('No valid client configuration found');
-  }
+// Regular HTTP endpoint
+app.get('/', (req: Request, res: Response) => {
+  res.send('Hello World!');
+});
 
-  const payload: SavedCredentials = {
-    type: 'authorized_user',
-    client_id: key.client_id,
-    client_secret: key.client_secret,
-    refresh_token: client.credentials.refresh_token || '',
-  };
-  
-  await fs.writeFile(TOKEN_PATH, JSON.stringify(payload));
-}
+// WebSocket connection handler
+wss.on('connection', (ws: WebSocket) => {
+  console.log('New client connected');
 
-/**
- * Load or request authorization to call APIs.
- *
- * @returns Promise resolving to authenticated OAuth2 client
- */
-async function authorize(): Promise<OAuth2Client> {
-  let client = await loadSavedCredentialsIfExist();
-  if (client) {
-    return client;
-  }
-  
-  client = await authenticate({
-    scopes: SCOPES,
-    keyfilePath: CREDENTIALS_PATH,
+  // Send welcome message to client
+  ws.send('Welcome to the WebSocket server!');
+
+  // Handle incoming messages
+  ws.on('message', async (data: Buffer) => {
+    console.log('Received:', data.toString());
+    const response = await authorize().then(listLabels);
+    ws.send(JSON.stringify(response));
   });
 
-  if (client.credentials) {
-    await saveCredentials(client);
-  }
-  
-  return client;
-}
-
-/**
- * Lists the labels in the user's account.
- *
- * @param auth - An authorized OAuth2 client
- */
-async function listLabels(auth: OAuth2Client): Promise<void> {
-  const gmail = google.gmail({ version: 'v1', auth });
-  const res = await gmail.users.labels.list({
-    userId: 'me',
+  // Handle client disconnection
+  ws.on('close', () => {
+    console.log('Client disconnected');
   });
-  
-  const labels = res.data.labels;
-  if (!labels || labels.length === 0) {
-    console.log('No labels found.');
-    return;
-  }
-  
-  console.log('Labels:');
-  labels.forEach((label: gmail_v1.Schema$Label) => {
-    console.log(`- ${label.name}`);
+
+  // Handle errors
+  ws.on('error', (error: Error) => {
+    console.error('WebSocket error:', error);
   });
-}
+});
 
-// Execute the program
-authorize().then(listLabels).catch(console.error);
-
-// Export functions if you want to use them as a module
-export {
-  authorize,
-  listLabels,
-  loadSavedCredentialsIfExist,
-  saveCredentials,
-};
+// Start server
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
