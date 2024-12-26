@@ -6,12 +6,11 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
-    "start": "npm run build && node build/index.js"
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\""
   },
   "type": "module",
   "bin": {
-    "gmail": "./build/index.js"
+    "weather": "./build/index.js"
   },
   "files": [
     "build"
