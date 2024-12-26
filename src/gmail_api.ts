@@ -1,6 +1,6 @@
 import { OAuth2Client } from 'google-auth-library';
 import { gmail_v1 } from 'googleapis';
-import { authenticateGmail, parseGmailMessage, ParsedGmailMessage } from './utils/gmail';
+import { authenticateGmail, parseGmailMessage, ParsedGmailMessage } from './utils/gmail.js';
 
 
   async function getEmailAddress(auth: OAuth2Client): Promise<string> {

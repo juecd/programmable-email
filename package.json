@@ -5,22 +5,33 @@
   "main": "index.ts",
   "scripts": {
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "start": "npm run build && node build/index.js"
   },
+  "type": "module",
+  "bin": {
+    "gmail": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
+    "@modelcontextprotocol/sdk": "^1.0.4",
     "express": "^4.21.2",
     "googleapis": "^144.0.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.10.2",
     "@types/ws": "^8.5.13",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.5",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }

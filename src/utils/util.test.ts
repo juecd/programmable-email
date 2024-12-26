@@ -1,4 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
+// @ts-expect-error
 import { buildGmailSearch, GmailSearchParams, parseGmailMessage } from './gmail';
 
 describe('Gmail Search Query Builder', () => {
