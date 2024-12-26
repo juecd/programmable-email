@@ -266,7 +266,6 @@ function findBodyPart(part: Schema$MessagePart): string | undefined {
   if (part.mimeType === `text/${bodyType}` && part.body?.data) {
     return part.body.data;
   }
-
   return undefined;
 }
 
@@ -283,7 +282,6 @@ if (message.payload) {
       result.bodyDecoded = Buffer.from(normalized, 'base64').toString('utf8');
     } catch (error) {
       console.error('Error decoding message body:', error);
-      result.bodyDecoded = '';
     }
   }
 }
