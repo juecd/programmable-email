@@ -9,17 +9,22 @@ This server is designed for experimentation and testing purposes. Note that any 
 - Claude Desktop for Mac
 
 ## Installation
-1. Gmail oauth credentials
+### 1. Gmail oauth credentials
+
 You'll first need to generate a personal oauth token following [this guide](https://developers.google.com/workspace/guides/create-credentials). Create Oauth client ID credentials as a server-side application.
 
 You'll need `credentials.json` in your root directory that represents the Google oauth token, as well as `token.json`. `token.json` is automatically generated the first time you use your Google oauth credentials.
 
-2. Run `docker build`
+### 2. Run `docker build`
+
 Build the image by running `docker build -t programmable-email .`
+
 Verify that it runs with `docker run -i --rm programmable-email`.
 
-3. Configure Claude with the MCP server
+### 3. Configure Claude with the MCP server
+
 Access the directory where MCP server configs live: `cd ~/Library/Application\ Support/Claude`
+
 Edit `claude_desktop_config.json` with the following:
 ```
 {
@@ -32,8 +37,8 @@ Edit `claude_desktop_config.json` with the following:
 }
 ```
 
-4. Open (or restart) Claude
-5. Ask Claude to retrieve your recent unread emails.
+### 4. Open (or restart) Claude
+### 5. Ask Claude to retrieve your recent unread emails.
 
 ### TODO
 - Finish Gmail read functionality (currently only a subset of available search capabilities are available, see index.ts)
