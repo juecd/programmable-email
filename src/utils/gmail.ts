@@ -117,7 +117,8 @@ function validateSearchParams(params: GmailSearchParams): void {
     properties: {
       subject: 'meeting',
       status: ['unread'],
-      excludeTerms: ['cancelled']
+      excludeTerms: ['cancelled'],
+      category: 'primary',
     },
     proximitySearches: [{
       term1: 'project',
